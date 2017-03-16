@@ -41,48 +41,27 @@
 \begin{document}
 \maketitle
 \section{Problem Statement}
-The paper deals with simulating human hair while accounting for the nonlinear behavior of hair strands with respect to bending and twisting. The paper provides a method for a realistic ans stable  simulation of human hair. 
-and twisting
+To simulate human hair, handling a wide range of hair types, in a realistic and stable manner while accounting for the non-linear behavior of hair strands with respect to bending and twisting.
 
 \section{Challenges}
-Human hair is a very complex material,
-consisting of hundreds of thousands of very thin, inextensible
-strands that interact with each other and with the body.
-The challenges in modeling hair dynamics are due to the facts that:
+Human hair is a very complex material, consisting of hundreds of thousands of very thin, inextensible strands that interact with each other and with the body. The challenges in modeling hair dynamics are due to the facts that:
 \begin{itemize}
-\item Each individual strand has a complex nonlinear mechanical behavior,
-strongly related to its natural shape: smooth, wavy, curly or fuzzy.
-\item The dynamics of an assembly of strands takes on a collective
-behavior; however, there is no quantified data
-regarding hair clustering and cohesion.
+\item Each individual strand has a complex nonlinear mechanical behavior, strongly related to its natural shape: smooth, wavy, curly or fuzzy.
+\item The dynamics of an assembly of strands takes on a collective behavior; however, there is no quantified data regarding hair clustering and cohesion.
 \item There is the issue of computational resources and efficiency that the simulation of a full head of hair would require due to the large number of hair strands involved.
 \end{itemize}
 
 \section{Key Ideas}
 \begin{itemize}
-\item The main idea of the paper is to model a strand of hair as a Super-Helix - a $C^1$
-continuous, piecewise helical rod, with an oval to circular cross section. This provides great versatility as it can represent a straight, wavy or curly hair just by adjusting number of pieces in a strand. 
-\item This model realistically animates a head full of hair
-from only a few hundreds of simulated using 
-the local coherence of hair motion by mimicking the collective behavior of hair by
-setting up adequate interaction forces between the simulated strands
-(Super-Helices) and by adding extra strands at the rendering stage.
+\item The main idea of the paper is to model a strand of hair as a Super-Helix - a $C^1$ continuous, piecewise helical rod, with an oval to circular cross section. This provides great versatility as it can represent a straight, wavy or curly hair just by adjusting number of pieces in a strand. 
+\item This model realistically animates a head full of hair from only a few hundreds of simulated using the local coherence of hair motion by mimicking the collective behavior of hair by setting up adequate interaction forces between the simulated strands (Super-Helices) and by adding extra strands at the rendering stage.
 \end{itemize}
 \section{Result Summary}
 \begin{itemize}
-\item They reproduced a series of
-real experiments on smooth and wavy hair clumps to show that the
-model captures the main dynamic features of natural hair like typical nonlinear behavior of hair (buckling, bending-twisting instabilities), as well as the nervousness of curly hair when submitted to high speed motion.
-\item They also validated the collective hair behavior
-model by comparing the details of the motion of a large real wisp
-with that of a simulated hair volume controlled by three guide
-strands. Their simulation was able to reproduce closely the motion
-and the cohesion between neighboring strands.
-\item The model was tested on a 3 GHz Pentium 4 processor. Up to 10
-strands can be simulated in real-time. When simulating a full head
-of hair, they obtained a mean computational time of
-0.3 s to 3 s per frame. 
+\item They reproduced a series of real experiments on smooth and wavy hair clumps to show that the model captures the main dynamic features of natural hair like typical nonlinear behavior of hair (buckling, bending-twisting instabilities), as well as the nervousness of curly hair when submitted to high speed motion.
+\item They also validated the collective hair behavior model by comparing the details of the motion of a large real wisp with that of a simulated hair volume controlled by three guide strands. Their simulation was able to reproduce closely the motion and the cohesion between neighboring strands.
+% \item The model was tested on a 3 GHz Pentium 4 processor. Up to 10 strands can be simulated in real-time. When simulating a full head of hair, they obtained a mean computational time of 0.3 s to 3 s per frame. 
 \end{itemize}
 \section{Implementation Approach}
-g
+The dynamic equation of motion of a helix is worked out in the paper, which is a second order differential equation. For time integration of it we will use Newton semi-implicit scheme with fixed time step. For every time step we will sove the set of linear equations. Various parameters can be tuned to get different hair styles/types. We will start with implementation of one helix and then for hair assembly.
 \end{document}
