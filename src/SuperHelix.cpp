@@ -1,5 +1,6 @@
 #include "SuperHelix.hpp"
 
+float deg2rad = 0.0174532925;
 Vector3f SuperHelix::getOmega(Vector3f n0, Vector3f n1, Vector3f n2, int segment) {
 	return	(q[3*segment] * n0 + 
 			 q[3*segment+1] * n1 +
@@ -31,8 +32,8 @@ void SuperHelix::calculateLnormals () {
 			Vector3f n_prev_parallel = getparallel(nL[i][j-1], w);
 			Vector3f n_prev_perp = getperpendicular(nL[i][j-1], w);
 
-			nL[i][j] =  n_prev_parallel + n_prev_perp * cos(omega * len[j-1]) + 
-						w.cross(getperpendicular(nL[0][j-1], w)) * sin(omega * len[j-1]);
+			nL[i][j] =  n_prev_parallel + n_prev_perp * cos(omega * len[j-1] * deg2rad) +
+						w.cross(getperpendicular(nL[0][j-1], w)) * sin(omega * len[j-1] * deg2rad);
 		
 		}
 	}
@@ -58,8 +59,8 @@ void SuperHelix::calculateLrs() {
 		Vector3f n_prev_parallel = getparallel(nL[0][j-1], w);
 		Vector3f n_prev_perp = getperpendicular(nL[0][j-1], w);
 
-		rL[j] = rL[j-1] + n_prev_parallel * len[j-1] + n_prev_perp * sin(omega * len[j-1]) / omega + 
-					w.cross(getperpendicular(nL[0][j-1], w)) * (1 - cos(omega * len[j-1])) / omega;
+		rL[j] = rL[j-1] + n_prev_parallel * len[j-1] + n_prev_perp * sin(omega * len[j-1] * deg2rad) / omega +
+					w.cross(getperpendicular(nL[0][j-1], w)) * (1 - cos(omega * len[j-1] * deg2rad)) / omega;
 		
 	}
 }
@@ -72,8 +73,8 @@ Vector3f SuperHelix::getr(float s, int segment) {
 	Vector3f n_parallel = getparallel(nL[0][segment], w);
 	Vector3f n_perp = getperpendicular(nL[0][segment], w);
 
-	return rL[segment] + n_parallel * (s - cum_len[segment]) + n_perp * sin(omega * (s - cum_len[segment])) / omega + 
-				w.cross(getperpendicular(nL[0][segment], w)) * (1 - cos(omega * (s - cum_len[segment]))) / omega;
+	return rL[segment] + n_parallel * (s - cum_len[segment]) + n_perp * sin(omega * (s - cum_len[segment] * deg2rad)) / omega +
+				w.cross(getperpendicular(nL[0][segment], w)) * (1 - cos(omega * (s - cum_len[segment] * deg2rad))) / omega;
 
 }
 
@@ -85,10 +86,10 @@ SuperHelix::SuperHelix() {
 
 	len.resize(n,0);
 	cum_len.resize(n,0);
-	len[0] = 50;
+	len[0] = 200;
 
 	for(int i=1; i<n; i++) {
-		len[i] = 50;
+		len[i] = 200;
 		cum_len[i] = len[i] + cum_len[i-1];
 	}
 
@@ -96,9 +97,9 @@ SuperHelix::SuperHelix() {
 
 	for(int i=0; i<3*n; i++) {
 		if(i%3 == 0)
-			q[i] = 10;
+			q[i] = 0.5;
 		else if (i%3 == 1)
-			q[i] = 0;
+			q[i] = 0.5;
 		else 
 			q[i] = 0;
 	}
@@ -144,6 +145,12 @@ void renderstrand() {
 	// glVertex3f(v1[0],v1[1],v1[2]);
 	// glVertex3f(v2[0],v2[1],v2[2]);
 	glEnd();
+	// glBegin(GL_LINE_STRIP);
+	// for(int i = 0; i <360; i+=10)
+	// {
+	// 	glVertex3f(100*cos(i*0.0174532925), 100*sin(i*0.0174532925), 1);
+	// }
+	// glEnd();
 	glPopMatrix(); 
 
 }
