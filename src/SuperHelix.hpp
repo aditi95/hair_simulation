@@ -17,6 +17,21 @@ class SuperHelix {
 public:
 	// Number of segments
 	int n;				
+	float hair_radius;
+	float rho;
+	float total_len;
+	float integration_step;
+	float E;
+	float a1,a2;
+	float I1, I2;
+	float mu;
+	float J;
+	float EI[3];
+	float sigma;
+	float epsilon;
+	float helix_radius;
+	float helix_step;
+
 	// Position of the left end of the segment
 	std::vector< Vector3f> L;
 
@@ -26,10 +41,17 @@ public:
 	std::vector< float > cum_len;
 
 	VectorXf q;
+	VectorXf qprev;
+	VectorXf qprevprev;
+	VectorXf q1;
+	VectorXf q2;
 	Vector3f initial_position;
 	Vector3f n_initial[3];
 
-	MatrixXf jacobian;
+	MatrixXf M;
+	MatrixXf K;
+	VectorXf A;
+	SuperHelix();
 
 	Vector3f getOmega(Vector3f n0, Vector3f n1, Vector3f n2, int segment);
 	float getOmegaNorm(Vector3f n0, Vector3f n1, Vector3f n2, int segment);
@@ -41,7 +63,14 @@ public:
 
 	Vector3f getr(float s, int segment);
 
-	SuperHelix();
+	Vector3f getJacobian(float s, int segment, int index);
+	MatrixXf getM();
+	MatrixXf getK();
+	VectorXf getA();
+	VectorXf getQint();
+
+	void update();
+	void renderstrand();
 
 };
 
