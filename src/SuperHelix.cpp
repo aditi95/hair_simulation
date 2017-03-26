@@ -1,6 +1,7 @@
 #include "SuperHelix.hpp"
 
-float deg2rad = 0.0174532925;
+float deg2rad = 1;
+// float deg2rad = 0.0174532925;
 Vector3f SuperHelix::getOmega(Vector3f n0, Vector3f n1, Vector3f n2, int segment) {
 	return	(q[3*segment] * n0 + 
 			 q[3*segment+1] * n1 +
@@ -73,8 +74,8 @@ Vector3f SuperHelix::getr(float s, int segment) {
 	Vector3f n_parallel = getparallel(nL[0][segment], w);
 	Vector3f n_perp = getperpendicular(nL[0][segment], w);
 
-	return rL[segment] + n_parallel * (s - cum_len[segment]) + n_perp * sin(omega * (s - cum_len[segment] * deg2rad)) / omega +
-				w.cross(getperpendicular(nL[0][segment], w)) * (1 - cos(omega * (s - cum_len[segment] * deg2rad))) / omega;
+	return rL[segment] + n_parallel * (s - cum_len[segment]) + n_perp * sin(omega * (s - cum_len[segment]) * deg2rad) / omega +
+				w.cross(getperpendicular(nL[0][segment], w)) * (1 - cos(omega * (s - cum_len[segment]) * deg2rad)) / omega;
 
 }
 
@@ -106,9 +107,10 @@ MatrixXf SuperHelix::getM() {
 		for(int j=i; j<3*n; j++) {
 			float sum = 0;
 			for(int k=0; k<n; k++) {
+
 				float s = cum_len[k];
 				while(s <= (cum_len[k]+len[k])) {
-					sum += getJacobian(s, (i/3), (i%3)).dot(getJacobian(s, (j/3), (j%3)));
+					sum += getJacobian(s, (i/3), (i%3)).dot(getJacobian(s, (j/3), (j%3))) * integration_step;
 					s += integration_step;
 				}
 			}
@@ -133,15 +135,12 @@ MatrixXf SuperHelix::getK() {
 
 VectorXf SuperHelix::getA() {
 	VectorXf A(3*n);
-	Vector3f g;
-	g[0] = g[2] = 0;
-	g[1] = -9.8;
 	for(int i=0; i<3*n; i++) {
 		float sum = 0;
 		for(int k=0; k<n; k++) {
 			float s = cum_len[k];
 			while(s <= (cum_len[k]+len[k])) {
-				sum += getJacobian(s, (i/3), (i%3)).dot(g) * rho;
+				sum += (getJacobian(s, (i/3), (i%3)).dot(g) * rho * 3.14 * hair_radius * hair_radius) * integration_step;
 				s += integration_step;
 			}
 		}
@@ -161,17 +160,21 @@ VectorXf SuperHelix::getQint() {
 
 SuperHelix::SuperHelix() {
 	float pi = 3.14;
+
+	float constantofmult = 100000;
+	g[0] = g[2] = 0;
+	g[1] = 9.8 * constantofmult;
 	n = 3;
-	hair_radius = 35e-6;
-	rho = 1.3 ;
-	integration_step = 5;
-	epsilon = 1;
+	hair_radius = 35e-6 * constantofmult;
+	rho = 1.3e-3 ;
+	integration_step = 1;
+	epsilon = 0.01;
 
 	a1 = hair_radius;
 	a2 = hair_radius;
 	sigma = 0.48;
 
-	E = 4e9;
+	E = 2e9 / constantofmult;
 	I1 = pi * a1 * a2 * a2 * a2 / 4;
 	I2 = pi * a1 * a1 * a1 * a2 / 4;
 
@@ -190,10 +193,10 @@ SuperHelix::SuperHelix() {
 
 	len.resize(n,0);
 	cum_len.resize(n,0);
-	len[0] = 50;
+	len[0] = 20;
 
 	for(int i=1; i<n; i++) {
-		len[i] = 50;
+		len[i] = 20;
 		cum_len[i] = len[i] + cum_len[i-1];
 	}
 
@@ -208,8 +211,8 @@ SuperHelix::SuperHelix() {
 	qprev.resize(3*n);
 	qprevprev.resize(3*n);
 
-	helix_radius = 1e-2;
-	helix_step = 0.5e-2;
+	helix_radius = 1e-2 * constantofmult;
+	helix_step = 0.5e-2 * constantofmult;
 
 	for(int i=0; i<3*n; i++) {
 
@@ -225,8 +228,8 @@ SuperHelix::SuperHelix() {
 	initial_position[1] = 0;
 	initial_position[2] = 0;
 
-	n_initial[0] = -1 * Vector3f::UnitY();
-	n_initial[1] = Vector3f::UnitX();
+	n_initial[0] = -1 * Vector3f::UnitX();
+	n_initial[1] = Vector3f::UnitY();
 	n_initial[2] = Vector3f::UnitZ();
 }
 
@@ -237,15 +240,12 @@ void SuperHelix::update() {
 	MatrixXf Qint = getQint();
 
 	q1 = (q - qprev)/epsilon;
-	q2 = q - 2* qprev + qprevprev;
 
 	MatrixXf AA = M + epsilon * mu * K + epsilon * epsilon * K;
-	VectorXf qn = q;
-	for(int i=1; i<n; i++) 
-		qn[i] *= q[i];
-	VectorXf B = epsilon * (M * q1 - epsilon * (A + Qint) + K * (qn - q));
+
+	VectorXf B = epsilon * (M * q1 - epsilon * (A + Qint) + K * (qprevprev - q));
 	VectorXf qd = AA.jacobiSvd(ComputeThinU | ComputeThinV).solve(B);
-	qprevprev = qprev;
+
 	qprev = q;
 	q = q + qd;
 
@@ -273,25 +273,7 @@ void SuperHelix::renderstrand() {
 
 	}
 
-	// glVertex3f(100, 100, 0);
-	// glVertex3f(-100, 100, 0);
-	// glVertex3f(-100, -100, 0);
-	// glVertex3f(100, -100, 0);
-	// glVertex3f(100, -100, 100);
-	// glVertex3f(-100, -100, 100);
-	// glVertex3f(100, 100, 0);
-	// glVertex3f(100, 100, 0);
-	// glVertex3f(100, 100, 0);
-
-	// glVertex3f(v1[0],v1[1],v1[2]);
-	// glVertex3f(v2[0],v2[1],v2[2]);
 	glEnd();
-	// glBegin(GL_LINE_STRIP);
-	// for(int i = 0; i <360; i+=10)
-	// {
-	// 	glVertex3f(100*cos(i*0.0174532925), 100*sin(i*0.0174532925), 1);
-	// }
-	// glEnd();
 	glPopMatrix(); 
 
 }
@@ -311,6 +293,8 @@ void display_func(void)
 	hairstrand.renderstrand(); 
 	glutSwapBuffers();
 
+	// sleep(1);
+	// std::cout << "Hello" << std::endl;
 	glutPostRedisplay();
 }
 
@@ -344,8 +328,8 @@ int main(int argc, char **argv) {
 	hairstrand.qprevprev = hairstrand.qprev = hairstrand.q;
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-	glutInitWindowSize(512,512);
-	glutInitWindowPosition(300, 300);
+	glutInitWindowSize(800,800);
+	glutInitWindowPosition(800, 800);
 	glutCreateWindow("Hair Simulation");
 	glutDisplayFunc(display_func);
 	glutReshapeFunc(reshape_func);

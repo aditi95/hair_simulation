@@ -1,8 +1,10 @@
-#ifndef _SUPERHELIX_HPP_
-#define _SUPERHELIX_HPP_
+#ifndef __SUPERHELIX_HPP__
+#define __SUPERHELIX_HPP__
 
 #include <bits/stdc++.h>
 #include <Eigen/Dense>
+#include <unistd.h>
+
 
 #ifdef __APPLE__
 	#include <GLUT/glut.h>
@@ -31,6 +33,7 @@ public:
 	float epsilon;
 	float helix_radius;
 	float helix_step;
+	Vector3f g;
 
 	// Position of the left end of the segment
 	std::vector< Vector3f> L;
