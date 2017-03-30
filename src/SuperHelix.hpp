@@ -33,6 +33,7 @@ public:
 	float epsilon;
 	float helix_radius;
 	float helix_step;
+	float constantofmult;
 	Vector3f g;
 
 	// Position of the left end of the segment
@@ -45,11 +46,13 @@ public:
 
 	VectorXf q;
 	VectorXf qprev;
-	VectorXf qprevprev;
+	VectorXf qrest;
 	VectorXf q1;
 	VectorXf q2;
 	Vector3f initial_position;
 	Vector3f n_initial[3];
+	float seglen;
+	int nrounds;
 
 	MatrixXf M;
 	MatrixXf K;

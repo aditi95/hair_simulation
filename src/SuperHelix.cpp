@@ -1,7 +1,7 @@
 #include "SuperHelix.hpp"
 
 float deg2rad = 1;
-// float deg2rad = 0.0174532925;
+
 Vector3f SuperHelix::getOmega(Vector3f n0, Vector3f n1, Vector3f n2, int segment) {
 	return	(q[3*segment] * n0 + 
 			 q[3*segment+1] * n1 +
@@ -13,10 +13,6 @@ float SuperHelix::getOmegaNorm (Vector3f n0, Vector3f n1, Vector3f n2, int segme
 			 q[3*segment+1] * n1 +
 			 q[3*segment+2] * n2).norm();
 }
-
-// Vector3f SuperHelix::getn(int index, float s, int segment) {
-
-// }
 
 void SuperHelix::calculateLnormals () {
 
@@ -35,7 +31,7 @@ void SuperHelix::calculateLnormals () {
 
 			nL[i][j] =  n_prev_parallel + n_prev_perp * cos(omega * len[j-1] * deg2rad) +
 						w.cross(getperpendicular(nL[0][j-1], w)) * sin(omega * len[j-1] * deg2rad);
-		
+	
 		}
 	}
 }
@@ -106,13 +102,10 @@ MatrixXf SuperHelix::getM() {
 	for(int i=0; i<3*n; i++) {
 		for(int j=i; j<3*n; j++) {
 			float sum = 0;
-			for(int k=0; k<n; k++) {
-
-				float s = cum_len[k];
-				while(s <= (cum_len[k]+len[k])) {
-					sum += getJacobian(s, (i/3), (i%3)).dot(getJacobian(s, (j/3), (j%3))) * integration_step;
-					s += integration_step;
-				}
+			float s = cum_len[0];
+			while(s <= (cum_len[n-1]+len[n-1])) {
+				sum += getJacobian(s, (i/3), (i%3)).dot(getJacobian(s, (j/3), (j%3))) * integration_step;
+				s += integration_step;
 			}
 			M(i,j) = M(j,i) = sum;
 		}
@@ -137,12 +130,10 @@ VectorXf SuperHelix::getA() {
 	VectorXf A(3*n);
 	for(int i=0; i<3*n; i++) {
 		float sum = 0;
-		for(int k=0; k<n; k++) {
-			float s = cum_len[k];
-			while(s <= (cum_len[k]+len[k])) {
-				sum += (getJacobian(s, (i/3), (i%3)).dot(g) * rho * 3.14 * hair_radius * hair_radius) * integration_step;
-				s += integration_step;
-			}
+		float s = cum_len[0];
+		while(s <= (cum_len[n-1]+len[n-1])) {
+			sum += (getJacobian(s, (i/3), (i%3)).dot(g) * rho * 3.14 * hair_radius * hair_radius) * integration_step;
+			s += integration_step;
 		}
 		A[i] = sum;
 	}
@@ -161,7 +152,7 @@ VectorXf SuperHelix::getQint() {
 SuperHelix::SuperHelix() {
 	float pi = 3.14;
 
-	float constantofmult = 100000;
+	constantofmult = 100000;
 	g[0] = g[2] = 0;
 	g[1] = 9.8 * constantofmult;
 	n = 3;
@@ -169,12 +160,15 @@ SuperHelix::SuperHelix() {
 	rho = 1.3e-3 ;
 	integration_step = 1;
 	epsilon = 0.01;
+	// epsilon = 1.0 / (rho * pi * hair_radius * hair_radius);
 
+	seglen = 20;
+	
 	a1 = hair_radius;
 	a2 = hair_radius;
 	sigma = 0.48;
 
-	E = 2e9 / constantofmult;
+	E = 2e09 / constantofmult;
 	I1 = pi * a1 * a2 * a2 * a2 / 4;
 	I2 = pi * a1 * a1 * a1 * a2 / 4;
 
@@ -183,6 +177,9 @@ SuperHelix::SuperHelix() {
 	EI[0] = mu * J;
 	EI[1] = E * I1;
 	EI[2] = E * I2;
+
+	helix_radius = 1e-2 * constantofmult;
+	helix_step = 0.5e-2 * constantofmult;
 
 	M.resize(3*n, 3*n);
 	A.resize(3*n);
@@ -193,10 +190,10 @@ SuperHelix::SuperHelix() {
 
 	len.resize(n,0);
 	cum_len.resize(n,0);
-	len[0] = 20;
+	len[0] = seglen;
 
 	for(int i=1; i<n; i++) {
-		len[i] = 20;
+		len[i] = seglen;
 		cum_len[i] = len[i] + cum_len[i-1];
 	}
 
@@ -209,28 +206,42 @@ SuperHelix::SuperHelix() {
 		q1[i] = q2[i] = 0;
 
 	qprev.resize(3*n);
-	qprevprev.resize(3*n);
+	qrest.resize(3*n);
 
-	helix_radius = 1e-2 * constantofmult;
-	helix_step = 0.5e-2 * constantofmult;
+
+	// for(int i=0; i<3*n; i++) {
+	// 	if(i%3 == 0)
+	// 		q[i] = 0.1; //helix_step / (2 * 3.14 * helix_radius * helix_radius);
+	// 	else if (i%3 == 1)
+	// 		q[i] = 0.1; //1.0/helix_radius;
+	// 	else
+	// 		q[i] = 0;
+	// }
 
 	for(int i=0; i<3*n; i++) {
-
 		if(i%3 == 0)
-			q[i] = helix_step / (2 * 3.14 * helix_radius * helix_radius);
+			qrest[i] = helix_step / (2 * 3.14 * helix_radius * helix_radius);
 		else if (i%3 == 1)
-			q[i] = 1.0/helix_radius;
-		else 
-			q[i] = 0;
+			qrest[i] = 1.0/helix_radius;
+		else
+			qrest[i] = 0;
 	}
+
+	q = qrest;
+	// qrest = q;
 
 	initial_position[0] = 0;
 	initial_position[1] = 0;
 	initial_position[2] = 0;
 
+	// n_initial[0] = Vector3f(+1.0/std::sqrt(2), +1.0/std::sqrt(2), 0);
+	// n_initial[1] = Vector3f(-1.0/std::sqrt(2), +1.0/std::sqrt(2), 0);
+
 	n_initial[0] = -1 * Vector3f::UnitX();
 	n_initial[1] = Vector3f::UnitY();
-	n_initial[2] = Vector3f::UnitZ();
+	n_initial[2] = -Vector3f::UnitZ();
+
+	nrounds = 1;
 }
 
 void SuperHelix::update() {
@@ -243,11 +254,14 @@ void SuperHelix::update() {
 
 	MatrixXf AA = M + epsilon * mu * K + epsilon * epsilon * K;
 
-	VectorXf B = epsilon * (M * q1 - epsilon * (A + Qint) + K * (qprevprev - q));
+	VectorXf B = epsilon * (M * q1 - epsilon * (A + Qint) + K * (qrest - q));
 	VectorXf qd = AA.jacobiSvd(ComputeThinU | ComputeThinV).solve(B);
 
 	qprev = q;
 	q = q + qd;
+
+	for(int i=0; i<3*n; i++)
+		std::cout << q[i] << " " << qd[i] << std::endl;
 
 	calculateLnormals();
 	calculateLrs();
@@ -266,7 +280,7 @@ void SuperHelix::renderstrand() {
 		while (true) {
 			if(start > end)
 				break;
-			glVertex3f((getr(start, i))[0], 2*(getr(start, i))[1], (getr(start, i))[2]);
+			glVertex3f((getr(start, i))[0], (getr(start, i))[1], (getr(start, i))[2]);
 			// std::cout << (getr(start, i))[0] << " " << (getr(start, i))[1] << " " << (getr(start, i))[2] << std::endl;
 			start += 1;
 		}
@@ -289,7 +303,8 @@ void display_func(void)
 	// glTranslatef(0.0,-50.0,0.0);
 	glPushMatrix();
 
-	hairstrand.update();
+	for(int i=0; i<hairstrand.nrounds; i++)
+		hairstrand.update();
 	hairstrand.renderstrand(); 
 	glutSwapBuffers();
 
@@ -321,11 +336,55 @@ void keyboard_func (unsigned char key, int x, int y)
 
 
 int main(int argc, char **argv) {
+
+	if(strcmp(argv[1], "straight") == 0) {
+		hairstrand.n_initial[0] = -1 * Vector3f::UnitX();
+		hairstrand.n_initial[1] = Vector3f::UnitY();
+		hairstrand.n_initial[2] = -Vector3f::UnitZ();
+
+		hairstrand.nrounds = 1;
+	}
+	else if(strcmp(argv[1], "curly") == 0) {
+
+		// hairstrand.n = 5;
+
+		hairstrand.n_initial[0] = -1 * Vector3f::UnitX();
+		hairstrand.n_initial[1] = Vector3f::UnitY();
+		hairstrand.n_initial[2] = -Vector3f::UnitZ();
+
+		for(int i=0; i<3*hairstrand.n; i++) {
+			if(i%3 == 0)
+				hairstrand.qrest[i] = 0.01;
+			else if (i%3 == 1)
+				hairstrand.qrest[i] = 0.1;
+			else
+				hairstrand.qrest[i] = 0;
+		}
+
+		hairstrand.q = hairstrand.qrest;
+		hairstrand.seglen = 40;
+
+		hairstrand.len[0] = hairstrand.seglen;
+
+		for(int i=1; i<hairstrand.n; i++) {
+			hairstrand.len[i] = hairstrand.seglen;
+			hairstrand.cum_len[i] = hairstrand.len[i] + hairstrand.cum_len[i-1];
+		}
+
+		hairstrand.constantofmult = 100000;
+
+		hairstrand.total_len = hairstrand.len[hairstrand.n-1] + hairstrand.cum_len[hairstrand.n-1];
+
+		hairstrand.nrounds = 10;
+
+
+	}
+
 	// std::cout << "Hello" << std::endl;
 	hairstrand.calculateLnormals();
 	// std::cout << "Hello" << std::endl;
 	hairstrand.calculateLrs();
-	hairstrand.qprevprev = hairstrand.qprev = hairstrand.q;
+	hairstrand.qprev = hairstrand.q;
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 	glutInitWindowSize(800,800);
