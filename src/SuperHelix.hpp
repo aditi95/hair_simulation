@@ -77,9 +77,13 @@ public:
 
 	void update();
 	void renderstrand();
+	void setpositions();
+	std::vector<Vector3f> pos;
 
 };
 
 SuperHelix hairstrand;
+SuperHelix* guidestrands;
+SuperHelix* interpolatedstrands;
 
 #endif

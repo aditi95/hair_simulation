@@ -1,6 +1,8 @@
 #include "SuperHelix.hpp"
 
 float deg2rad = 1;
+int nguides = 2;
+int nint = 1;
 
 Vector3f SuperHelix::getOmega(Vector3f n0, Vector3f n1, Vector3f n2, int segment) {
 	return	(q[3*segment] * n0 + 
@@ -245,9 +247,8 @@ SuperHelix::SuperHelix() {
 }
 
 void SuperHelix::update() {
-	MatrixXf M = getM();
-	MatrixXf K = getK();
-	MatrixXf A = getA();
+	M = getM();
+	A = getA();
 	MatrixXf Qint = getQint();
 
 	q1 = (q - qprev)/epsilon;
@@ -273,23 +274,44 @@ void SuperHelix::renderstrand() {
 	glBegin(GL_LINE_STRIP);
 
 
-	for(int i=0; i<n; i++) {
-		float start = cum_len[i];
-		float end = start + len[i];
-		// std::cout << "Segment : " << i << std::endl;
-		while (true) {
-			if(start > end)
-				break;
-			glVertex3f((getr(start, i))[0], (getr(start, i))[1], (getr(start, i))[2]);
-			// std::cout << (getr(start, i))[0] << " " << (getr(start, i))[1] << " " << (getr(start, i))[2] << std::endl;
-			start += 1;
-		}
-
+	for(int i=0; i<pos.size(); i++) {
+		glVertex3f(pos[i][0], pos[i][1], pos[i][2]);
 	}
 
 	glEnd();
 	glPopMatrix(); 
 
+}
+
+void SuperHelix::setpositions() {
+	pos.clear();
+	for(int i=0; i<n; i++) {
+		float start = cum_len[i];
+		float end = start + len[i];
+		while (true) {
+			if(start > end)
+				break;
+			pos.push_back(getr(start,i));
+			start += 1;
+		}
+	}
+}
+
+void renderinterpolatedstrands() {
+	glPushMatrix(); 
+	for(int j=0; j<nint; j++) {
+		for(int i=0; i<(nguides-1); i++) {
+			glBegin(GL_LINE_STRIP);
+			float x = (j+1)*1.0 /(nint+1);
+			Vector3f myPos;
+			for(int k=0; k<guidestrands[i].pos.size(); k++) {
+				myPos = guidestrands[i].pos[k]*x + guidestrands[i+1].pos[k]*(1-x);
+				glVertex3f(myPos[0], myPos[1], myPos[2]);
+			}
+			glEnd();
+		}
+	}
+	glPopMatrix();
 }
 
 void display_func(void)
@@ -303,9 +325,16 @@ void display_func(void)
 	// glTranslatef(0.0,-50.0,0.0);
 	glPushMatrix();
 
-	for(int i=0; i<hairstrand.nrounds; i++)
-		hairstrand.update();
-	hairstrand.renderstrand(); 
+	for(int i=0; i<nguides; i++) {
+		for(int j=0; j<guidestrands[i].nrounds; j++) {
+			guidestrands[i].update();
+			guidestrands[i].setpositions();
+		}
+		guidestrands[i].renderstrand(); 
+	}
+
+	renderinterpolatedstrands();
+
 	glutSwapBuffers();
 
 	// sleep(1);
@@ -333,53 +362,73 @@ void keyboard_func (unsigned char key, int x, int y)
     }
 }
 
-
+// SuperHelix* guidestrands;
+// SuperHelix* interpolatedstrands;
 
 int main(int argc, char **argv) {
 
-	if(strcmp(argv[1], "straight") == 0) {
-		hairstrand.n_initial[0] = -1 * Vector3f::UnitX();
-		hairstrand.n_initial[1] = Vector3f::UnitY();
-		hairstrand.n_initial[2] = -Vector3f::UnitZ();
+	guidestrands = new SuperHelix[nguides];
+	// interpolatedstrands = new SuperHelix[nint];
 
-		hairstrand.nrounds = 1;
+	// if(strcmp(argv[1], "straight") == 0) {
+	// 	hairstrand.n_initial[0] = -1 * Vector3f::UnitX();
+	// 	hairstrand.n_initial[1] = Vector3f::UnitY();
+	// 	hairstrand.n_initial[2] = -Vector3f::UnitZ();
+
+	// 	hairstrand.nrounds = 1;
+	// }
+	// else if(strcmp(argv[1], "curly") == 0) {
+
+	// 	hairstrand.epsilon = 0.01;
+
+	// 	hairstrand.n_initial[0] = -1 * Vector3f::UnitX();
+	// 	hairstrand.n_initial[1] = Vector3f::UnitY();
+	// 	hairstrand.n_initial[2] = -Vector3f::UnitZ();
+
+	// 	for(int i=0; i<3*hairstrand.n; i++) {
+	// 		if(i%3 == 0)
+	// 			hairstrand.qrest[i] = 0.01;
+	// 		else if (i%3 == 1)
+	// 			hairstrand.qrest[i] = 0.1;
+	// 		else
+	// 			hairstrand.qrest[i] = 0;
+	// 	}
+
+	// 	hairstrand.q = hairstrand.qrest;
+	// 	hairstrand.seglen = 40;
+
+	// 	hairstrand.len[0] = hairstrand.seglen;
+
+	// 	for(int i=1; i<hairstrand.n; i++) {
+	// 		hairstrand.len[i] = hairstrand.seglen;
+	// 		hairstrand.cum_len[i] = hairstrand.len[i] + hairstrand.cum_len[i-1];
+	// 	}
+
+	// 	hairstrand.constantofmult = 100000;
+
+	// 	hairstrand.total_len = hairstrand.len[hairstrand.n-1] + hairstrand.cum_len[hairstrand.n-1];
+
+	// 	hairstrand.nrounds = 10;
+
+
+	// }
+
+	guidestrands[1].initial_position = Vector3f(20,20,0);
+
+	for(int i=0; i<nguides; i++) {
+		guidestrands[i].calculateLnormals();
+		guidestrands[i].calculateLrs();
+		guidestrands[i].qprev = guidestrands[i].q;
+		guidestrands[i].K = guidestrands[i].getK();
 	}
-	else if(strcmp(argv[1], "curly") == 0) {
-
-		// hairstrand.n = 5;
-
-		hairstrand.n_initial[0] = -1 * Vector3f::UnitX();
-		hairstrand.n_initial[1] = Vector3f::UnitY();
-		hairstrand.n_initial[2] = -Vector3f::UnitZ();
-
-		for(int i=0; i<3*hairstrand.n; i++) {
-			if(i%3 == 0)
-				hairstrand.qrest[i] = 0.01;
-			else if (i%3 == 1)
-				hairstrand.qrest[i] = 0.1;
-			else
-				hairstrand.qrest[i] = 0;
-		}
-
-		hairstrand.q = hairstrand.qrest;
-		hairstrand.seglen = 40;
-
-		hairstrand.len[0] = hairstrand.seglen;
-
-		for(int i=1; i<hairstrand.n; i++) {
-			hairstrand.len[i] = hairstrand.seglen;
-			hairstrand.cum_len[i] = hairstrand.len[i] + hairstrand.cum_len[i-1];
-		}
-
-		hairstrand.constantofmult = 100000;
-
-		hairstrand.total_len = hairstrand.len[hairstrand.n-1] + hairstrand.cum_len[hairstrand.n-1];
-
-		hairstrand.nrounds = 10;
 
 
-	}
-
+	// for(int i=0; i<nint; i++) {
+	// 	interpolatedstrands[i].calculateLnormals();
+	// 	interpolatedstrands[i].calculateLrs();
+	// 	interpolatedstrands[i].qprev = interpolatedstrands[i].q;
+	// 	interpolatedstrands[i].K = interpolatedstrands[i].getK();
+	// }
 	// std::cout << "Hello" << std::endl;
 	hairstrand.calculateLnormals();
 	// std::cout << "Hello" << std::endl;
